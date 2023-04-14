@@ -1,0 +1,17 @@
+[package]
+name = "shoko_external_importer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+diesel = { version = "^2.0.3", features = ["without-deprecated", "r2d2", "sqlite"] }
+diesel_migrations = "2.0.0"
+notify = { version = "^5.1.0", features = ["serde"] }
+clap = { version = "^4.2.1", features = ["derive", "env", "unicode", "wrap_help"] }
+itertools = "^0.10.5"
+anyhow = "^1.0.70"
+log = "^0.4.17"
+globmatch = "^0.2.4"
+simplelog = "^0.12.1"
