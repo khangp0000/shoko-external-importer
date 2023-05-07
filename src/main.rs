@@ -18,7 +18,11 @@ use db_utils::FileProcessingSqliteDb;
 use file_process_manager::FileProcessingManager;
 use io_utils::link_file;
 use log::{debug, error, info, trace, LevelFilter};
-use notify_debouncer_mini::{new_debouncer, notify::{RecursiveMode, Watcher, RecommendedWatcher}, DebounceEventResult, Debouncer};
+use notify_debouncer_mini::{
+    new_debouncer,
+    notify::{RecommendedWatcher, RecursiveMode},
+    DebounceEventResult, Debouncer,
+};
 use simplelog::{ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
 
 /// Simple program to import shoko anime externally

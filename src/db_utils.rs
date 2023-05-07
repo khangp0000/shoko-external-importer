@@ -11,7 +11,7 @@ use diesel::{
     SqliteConnection,
 };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use std::sync::{Mutex, MutexGuard, RwLockWriteGuard, RwLockReadGuard};
+use std::sync::{Mutex, MutexGuard, RwLockReadGuard, RwLockWriteGuard};
 use std::{
     path::PathBuf,
     sync::{Arc, RwLock},
@@ -21,14 +21,14 @@ const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/");
 
 pub struct FileProcessingSqliteDb {
     pool: Pool<ConnectionManager<SqliteConnection>>,
-    db_lock: Arc<RwLock<()>>
+    db_lock: Arc<RwLock<()>>,
 }
 
 impl FileProcessingSqliteDb {
     pub fn new(pool: Pool<ConnectionManager<SqliteConnection>>) -> FileProcessingSqliteDb {
         FileProcessingSqliteDb {
             pool: pool,
-            db_lock: Arc::new(RwLock::new(()))
+            db_lock: Arc::new(RwLock::new(())),
         }
     }
 
@@ -115,7 +115,7 @@ impl FileProcessingSqliteDbConnection {
         })
     }
 
-    pub fn is_path_processed(&self, path: &PathBuf) -> Result<bool> {        
+    pub fn is_path_processed(&self, path: &PathBuf) -> Result<bool> {
         let (_db_lock, mut connection_lock) = self.lock_read_connection()?;
 
         match processed_files

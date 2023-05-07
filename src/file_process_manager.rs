@@ -1,22 +1,17 @@
 use anyhow::Result;
 use crossbeam_channel::Receiver;
-use std::{
-    path::PathBuf,
-    sync::{Arc},
-};
+use std::{path::PathBuf, sync::Arc};
 
 use dashmap::DashSet;
 use threadpool::ThreadPool;
 
-pub struct FileProcessingManager
-{
+pub struct FileProcessingManager {
     pool: ThreadPool,
     work_queue: Receiver<(Arc<PathBuf>, Arc<PathBuf>)>,
     shared_resource: Arc<FileProcessingResource>,
 }
 
-struct FileProcessingResource
-{
+struct FileProcessingResource {
     in_process: Arc<DashSet<Arc<String>>>,
     handler: Box<dyn Fn(&Arc<PathBuf>, &Arc<PathBuf>) -> Result<bool> + Sync + Send>,
     result_handler: Box<dyn Fn(&Arc<PathBuf>, Result<bool>) + Sync + Send>,
