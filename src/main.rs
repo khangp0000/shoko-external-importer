@@ -111,7 +111,7 @@ fn main() -> Result<()> {
     }
 
     let (sender, task) =
-        init_file_processor(db.clone(), canon_shoko_drop_dir.clone(), args.parallel);
+        init_file_processor(&db, &canon_shoko_drop_dir, args.parallel);
 
     if !args.daemon || args.init_run {
         run_once(&sender, &canon_watch_dirs, &canon_shoko_drop_dir)?;
@@ -250,17 +250,19 @@ fn init_logger(log_level: LogLevel) -> Result<()> {
 }
 
 fn init_file_processor(
-    db: Arc<FileProcessingSqliteDb>,
-    dst_base_dir: Arc<PathBuf>,
+    db: &Arc<FileProcessingSqliteDb>,
+    dst_base_dir: &Arc<PathBuf>,
     parallel: usize,
 ) -> (Sender<(Arc<PathBuf>, Arc<PathBuf>)>, JoinHandle<()>) {
     let (send, recv) = crossbeam_channel::bounded(100);
+    let db_clone = db.clone();
     let dst_base_dir_clone = dst_base_dir.clone();
+    let dst_base_dir_clone_2 = dst_base_dir.clone();
     let file_processing_manager = FileProcessingManager::new(
         parallel,
         recv,
-        Box::new(move |f, s| process_file(&db, f, s, &dst_base_dir)),
-        Box::new(move |f, r| result_handler(r, f, &dst_base_dir_clone)),
+        Box::new(move |f, s| process_file(&db_clone, f, s, &dst_base_dir_clone)),
+        Box::new(move |f, r| result_handler(r, f, &dst_base_dir_clone_2)),
     );
 
     return (
