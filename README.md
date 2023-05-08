@@ -23,6 +23,9 @@ A very simple program that use to hard link files from one (or more) folder to a
 * `--daemon` — If true, run in daemon mode, not running initial scan, only check for new files
 
   Default value: `false`
+* `--systemd-notify` — If true, notify systemd of ready status
+
+  Default value: `false`
 * `-i`, `--init-run` — Only check if in daemon mode, if set, run initial scan before running watch mode
 
   Default value: `false`
@@ -33,7 +36,7 @@ A very simple program that use to hard link files from one (or more) folder to a
 
   Possible values: `off`, `debug`, `info`, `warn`, `error`, `trace`
 
-* `-p`, `--parallel <PARALLEL>` — Number of file processed at the same time per source directory
+* `-p`, `--parallel <PARALLEL>` — Maximum number of file processed at the same time
 
   Default value: `8`
 

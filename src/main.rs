@@ -23,6 +23,7 @@ use notify_debouncer_mini::{
     notify::{RecommendedWatcher, RecursiveMode},
     DebounceEventResult, Debouncer,
 };
+use sd_notify::NotifyState;
 use simplelog::{ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
 
 /// Simple program to import shoko anime externally
@@ -56,6 +57,10 @@ struct Args {
     #[arg(long, default_value = "false", env = "DAEMON")]
     daemon: bool,
 
+    /// If true, notify systemd of ready status
+    #[arg(long, default_value = "false", env = "SYSTEMD_NOTIFY")]
+    systemd_notify: bool,
+
     /// Only check if in daemon mode, if set, run initial scan before running watch mode.
     #[arg(short, long, default_value = "false", env = "INIT_RUN")]
     init_run: bool,
@@ -68,7 +73,7 @@ struct Args {
     #[arg(short, long, default_value = "info", env = "LOGGING_LEVEL", value_enum)]
     log_level: LogLevel,
 
-    /// Number of file processed at the same time per source directory
+    /// Maximum number of file processed at the same time
     #[arg(short, long, default_value = "8", env = "PARALLEL")]
     parallel: usize,
 }
@@ -117,9 +122,13 @@ fn main() -> Result<()> {
         run_once(&sender, &canon_watch_dirs, &canon_shoko_drop_dir)?;
     }
 
-    let _debouncers: Vec<Debouncer<RecommendedWatcher>>;
+    let _debouncers: Vec<Debouncer<RecommendedWatcher>>; // Need to keep this alive or it will stop the notify thread
     if args.daemon {
         _debouncers = run_watch(&sender, &canon_watch_dirs, &canon_shoko_drop_dir)?;
+    }
+
+    if args.systemd_notify {
+        sd_notify::notify(true, &[NotifyState::Ready]).unwrap();
     }
 
     drop(sender);
