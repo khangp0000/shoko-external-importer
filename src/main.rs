@@ -115,8 +115,7 @@ fn main() -> Result<()> {
         db_conn.run_migrations()?;
     }
 
-    let (sender, task) =
-        init_file_processor(&db, &canon_shoko_drop_dir, args.parallel);
+    let (sender, task) = init_file_processor(&db, &canon_shoko_drop_dir, args.parallel);
 
     if !args.daemon || args.init_run {
         run_once(&sender, &canon_watch_dirs, &canon_shoko_drop_dir)?;
@@ -153,7 +152,7 @@ fn run_once(
         );
         for src_file_res in globmatch::Builder::new(pattern)
             .build(&src_base_dir.clone().as_ref())
-            .map_err(|err| anyhow!(err))?
+            .map_err(|err| anyhow!(err.clone()))?
         {
             match src_file_res {
                 Ok(src_file) => sender.send((Arc::new(src_file), src_base_dir.clone()))?,
@@ -185,7 +184,6 @@ fn run_watch(
         let src_base_dir_clone = src_base_dir.clone();
         let mut debouncer = new_debouncer(
             Duration::from_secs(10),
-            None,
             move |res: DebounceEventResult| match res {
                 Result::Ok(events) => events.into_iter().for_each(|event| match event.kind {
                     notify_debouncer_mini::DebouncedEventKind::Any => {
