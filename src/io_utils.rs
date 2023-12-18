@@ -1,18 +1,19 @@
 use anyhow::{bail, Context, Result};
+use std::path::Path;
 use std::{
     fs::{create_dir_all, hard_link},
     path::PathBuf,
 };
 
-pub fn chk_canon_dir_exists(path: &PathBuf) -> Result<PathBuf> {
+pub fn chk_canon_dir_exists(path: &Path) -> Result<PathBuf> {
     create_dir_all(path)
         .with_context(|| format!("Cannot create directory at path: {}", path.display()))?;
     path.canonicalize()
         .with_context(|| format!("Invalid path: {}", path.display()))
 }
 
-pub fn link_file(src_base_dir: &PathBuf, src_file: &PathBuf, dst_base_dir: &PathBuf) -> Result<()> {
-    let relative_src_file = src_file.strip_prefix(&src_base_dir).with_context(|| {
+pub fn link_file(src_base_dir: &Path, src_file: &Path, dst_base_dir: &Path) -> Result<()> {
+    let relative_src_file = src_file.strip_prefix(src_base_dir).with_context(|| {
         format!(
             "Fail to strip path {} from path {}",
             src_base_dir.display(),

@@ -11,11 +11,9 @@ use diesel::{
     SqliteConnection,
 };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use std::path::Path;
+use std::sync::{Arc, RwLock};
 use std::sync::{Mutex, MutexGuard, RwLockReadGuard, RwLockWriteGuard};
-use std::{
-    path::PathBuf,
-    sync::{Arc, RwLock},
-};
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/");
 
@@ -27,12 +25,12 @@ pub struct FileProcessingSqliteDb {
 impl FileProcessingSqliteDb {
     pub fn new(pool: Pool<ConnectionManager<SqliteConnection>>) -> FileProcessingSqliteDb {
         FileProcessingSqliteDb {
-            pool: pool,
+            pool,
             db_lock: Arc::new(RwLock::new(())),
         }
     }
 
-    pub fn create_from_file(db: &PathBuf) -> Result<FileProcessingSqliteDb> {
+    pub fn create_from_file(db: &Path) -> Result<FileProcessingSqliteDb> {
         let manager = ConnectionManager::<SqliteConnection>::new(db.display().to_string());
         Pool::builder()
             .max_size(30)
@@ -56,25 +54,19 @@ pub struct FileProcessingSqliteDbConnection {
     connection: Mutex<PooledConnection<ConnectionManager<SqliteConnection>>>,
 }
 
+type ReadLockGuard<'a> = RwLockReadGuard<'a, ()>;
+type WriteLockGuard<'a> = RwLockWriteGuard<'a, ()>;
+type PooledConnectionLockGuard<'a> =
+    MutexGuard<'a, PooledConnection<ConnectionManager<SqliteConnection>>>;
 impl FileProcessingSqliteDbConnection {
-    fn lock_write_connection(
-        &self,
-    ) -> Result<(
-        RwLockWriteGuard<'_, ()>,
-        MutexGuard<'_, PooledConnection<ConnectionManager<SqliteConnection>>>,
-    )> {
+    fn lock_write_connection(&self) -> Result<(WriteLockGuard, PooledConnectionLockGuard)> {
         Ok((
             self.lock.write().map_err(|e| anyhow!(e.to_string()))?,
             self.connection.lock().map_err(|e| anyhow!(e.to_string()))?,
         ))
     }
 
-    fn lock_read_connection(
-        &self,
-    ) -> Result<(
-        RwLockReadGuard<'_, ()>,
-        MutexGuard<'_, PooledConnection<ConnectionManager<SqliteConnection>>>,
-    )> {
+    fn lock_read_connection(&self) -> Result<(ReadLockGuard, PooledConnectionLockGuard)> {
         Ok((
             self.lock.read().map_err(|e| anyhow!(e.to_string()))?,
             self.connection.lock().map_err(|e| anyhow!(e.to_string()))?,
@@ -87,7 +79,7 @@ impl FileProcessingSqliteDbConnection {
         Ok(())
     }
 
-    pub fn add_processed_file(&self, path: &PathBuf) -> Result<()> {
+    pub fn add_processed_file(&self, path: &Path) -> Result<()> {
         let (_db_lock, mut connection_lock) = self.lock_write_connection()?;
 
         let processed_file_entry = NewProcessedFile {
@@ -115,7 +107,7 @@ impl FileProcessingSqliteDbConnection {
         })
     }
 
-    pub fn is_path_processed(&self, path: &PathBuf) -> Result<bool> {
+    pub fn is_path_processed(&self, path: &Path) -> Result<bool> {
         let (_db_lock, mut connection_lock) = self.lock_read_connection()?;
 
         match processed_files

@@ -11,20 +11,23 @@ pub struct FileProcessingManager {
     shared_resource: Arc<FileProcessingResource>,
 }
 
+type FileProcessHandler = Box<dyn Fn(&Arc<PathBuf>, &Arc<PathBuf>) -> Result<bool> + Sync + Send>;
+type FileProcessResultHandler = Box<dyn Fn(&Arc<PathBuf>, Result<bool>) + Sync + Send>;
+
 struct FileProcessingResource {
     in_process: Arc<DashSet<Arc<String>>>,
-    handler: Box<dyn Fn(&Arc<PathBuf>, &Arc<PathBuf>) -> Result<bool> + Sync + Send>,
-    result_handler: Box<dyn Fn(&Arc<PathBuf>, Result<bool>) + Sync + Send>,
+    handler: FileProcessHandler,
+    result_handler: FileProcessResultHandler,
 }
 
 impl FileProcessingManager {
     pub fn new(
         n_thread: usize,
         recv: Receiver<(Arc<PathBuf>, Arc<PathBuf>)>,
-        handler: Box<dyn Fn(&Arc<PathBuf>, &Arc<PathBuf>) -> Result<bool> + Sync + Send>,
-        result_handler: Box<dyn Fn(&Arc<PathBuf>, Result<bool>) + Sync + Send>,
+        handler: FileProcessHandler,
+        result_handler: FileProcessResultHandler,
     ) -> FileProcessingManager {
-        return FileProcessingManager {
+        FileProcessingManager {
             pool: ThreadPool::new(n_thread),
             work_queue: recv,
             shared_resource: Arc::new(FileProcessingResource {
@@ -32,7 +35,7 @@ impl FileProcessingManager {
                 handler,
                 result_handler,
             }),
-        };
+        }
     }
 
     pub fn process_once(&self) -> Result<()> {

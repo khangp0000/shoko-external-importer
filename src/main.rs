@@ -131,11 +131,13 @@ fn main() -> Result<()> {
     }
 
     drop(sender);
-    Ok(task.join().unwrap())
+    task.join().unwrap();
+    Ok(())
 }
 
+type SrcPathBufSender = Sender<(Arc<PathBuf>, Arc<PathBuf>)>;
 fn run_once(
-    sender: &Sender<(Arc<PathBuf>, Arc<PathBuf>)>,
+    sender: &SrcPathBufSender,
     canon_watch_dirs: &Vec<Arc<PathBuf>>,
     canon_shoko_drop_dir: &Arc<PathBuf>,
 ) -> Result<()> {
@@ -144,14 +146,14 @@ fn run_once(
         &canon_shoko_drop_dir.display()
     );
     let pattern = "**/*.[mM][kK][vV]";
-    Ok(for src_base_dir in canon_watch_dirs {
+    for src_base_dir in canon_watch_dirs {
         info!(
             "Processing folder {} with glob pattern {}",
             src_base_dir.display(),
             pattern
         );
         for src_file_res in globmatch::Builder::new(pattern)
-            .build(&src_base_dir.clone().as_ref())
+            .build(src_base_dir.clone().as_ref())
             .map_err(|err| anyhow!(err.clone()))?
         {
             match src_file_res {
@@ -161,11 +163,12 @@ fn run_once(
                 }
             };
         }
-    })
+    }
+    Ok(())
 }
 
 fn run_watch(
-    sender: &Sender<(Arc<PathBuf>, Arc<PathBuf>)>,
+    sender: &SrcPathBufSender,
     canon_watch_dirs: &Vec<Arc<PathBuf>>,
     canon_shoko_drop_dir: &Arc<PathBuf>,
 ) -> Result<Vec<Debouncer<RecommendedWatcher>>> {
@@ -222,7 +225,7 @@ fn run_watch(
         debouncers.push(debouncer);
     }
 
-    return Ok(debouncers);
+    Ok(debouncers)
 }
 
 fn process_file(
@@ -232,9 +235,9 @@ fn process_file(
     dst_base_dir: &Arc<PathBuf>,
 ) -> Result<bool> {
     let db_conn = db.create_connection()?;
-    match db_conn.is_path_processed(&src_file)? {
-        false => link_file(&src_base_dir, &src_file, &dst_base_dir)
-            .and_then(|_| db_conn.add_processed_file(&src_file))
+    match db_conn.is_path_processed(src_file)? {
+        false => link_file(src_base_dir, src_file, dst_base_dir)
+            .and_then(|_| db_conn.add_processed_file(src_file))
             .map(|_| true),
         true => Ok(false),
     }
@@ -260,7 +263,7 @@ fn init_file_processor(
     db: &Arc<FileProcessingSqliteDb>,
     dst_base_dir: &Arc<PathBuf>,
     parallel: usize,
-) -> (Sender<(Arc<PathBuf>, Arc<PathBuf>)>, JoinHandle<()>) {
+) -> (SrcPathBufSender, JoinHandle<()>) {
     let (send, recv) = crossbeam_channel::bounded(100);
     let db_clone = db.clone();
     let dst_base_dir_clone = dst_base_dir.clone();
@@ -272,7 +275,7 @@ fn init_file_processor(
         Box::new(move |f, r| result_handler(r, f, &dst_base_dir_clone_2)),
     );
 
-    return (
+    (
         send,
         spawn(move || loop {
             match file_processing_manager.process_once() {
@@ -283,7 +286,7 @@ fn init_file_processor(
                 _ => trace!("Finish processing 1 file"),
             }
         }),
-    );
+    )
 }
 
 fn result_handler(result: Result<bool>, src_file: &Arc<PathBuf>, dst_base_dir: &Arc<PathBuf>) {
